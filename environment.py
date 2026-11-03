@@ -2,6 +2,7 @@ import gymnasium as gym
 import pandas as pd
 import numpy as np
 from scipy.special import softmax
+from stable_baselines3.common.env_checker import check_env
 
 class PortfolioEnv(gym.Env): # inherits from gymnasium
     def __init__(self, df, version, flag):
@@ -80,14 +81,33 @@ class PortfolioEnv(gym.Env): # inherits from gymnasium
         self.t += 1 # move to the next day
 
         observation = self.get_observation() 
-        truncated = ((self.steps >= self.episode_length) or (self.t == len(self.dates) - 1))
+        truncated = bool((self.steps >= self.episode_length) or (self.t >= len(self.dates) - 1))
 
         return observation, reward, terminated, truncated, info
 
-df = pd.read_csv('full_dataset.csv', parse_dates=['Date'])
-env = PortfolioEnv(df, 'vix_only', 'training')
+
+
+df = pd.read_csv('train_dataset.csv', parse_dates=['Date'])
+print(f"Columns: {df.columns.tolist()}")
+print(f"Start Date: {df['Date'].iloc[0]}")
+print(f"End Date: {df['Date'].iloc[-1]}")
+env = PortfolioEnv(df, 'vanilla', 'training')
+
+env.reset(seed=0)
 
 observation, info = env.reset()
+print(f"Observation shape: {observation.shape}")
+
+env.reset()
+n = 0
+truncated = False
+while not truncated:
+    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
+    n += 1
+print(n)  # expect exactly 252
+
+check_env(env)
+print(f"Null check: {np.isnan(env.raw_returns).any(), np.isnan(env.regime).any()}")
 value = 1
 counter = 0
 
