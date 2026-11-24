@@ -4,9 +4,8 @@ import pandas as pd
 import wandb
 from wandb.integration.sb3 import WandbCallback
 import numpy as np
-from evaluate import evaluate_model
 
-VERSION = 'vanilla'
+VERSION = 'vix_only'
 SEED = [0,12,25,38,42]
 
 # environment

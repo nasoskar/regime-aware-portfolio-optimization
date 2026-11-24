@@ -68,8 +68,12 @@ class PortfolioEnv(gym.Env): # inherits from gymnasium
         self.steps += 1
         terminated = False # a market never ends
         info = {}
-        probabilities = softmax(action * 5) # streching the probabilities 
+        probabilities = softmax(np.log(self.weights + 1e-8) + action * 0.5)
+        probabilities = np.minimum(probabilities, 0.4)
+        probabilities = probabilities / probabilities.sum()
+        
         traded_volume = np.abs(probabilities - self.weights).sum()
+        info['turnover'] = traded_volume
         trading_fee = traded_volume * self.cost_rate
         reward = np.dot(probabilities, self.raw_returns[self.t]) - trading_fee
 
@@ -85,46 +89,3 @@ class PortfolioEnv(gym.Env): # inherits from gymnasium
 
         return observation, reward, terminated, truncated, info
 
-
-
-df = pd.read_csv('train_dataset.csv', parse_dates=['Date'])
-print(f"Columns: {df.columns.tolist()}")
-print(f"Start Date: {df['Date'].iloc[0]}")
-print(f"End Date: {df['Date'].iloc[-1]}")
-env = PortfolioEnv(df, 'vanilla', 'training')
-
-env.reset(seed=0)
-
-observation, info = env.reset()
-print(f"Observation shape: {observation.shape}")
-
-env.reset()
-n = 0
-truncated = False
-while not truncated:
-    obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
-    n += 1
-print(n)  # expect exactly 252
-
-check_env(env)
-print(f"Null check: {np.isnan(env.raw_returns).any(), np.isnan(env.regime).any()}")
-value = 1
-counter = 0
-
-while True:
-    counter += 1
-    action = env.action_space.sample() # take a random action
-    observation, reward, terminated, truncated, info = env.step(action)
-
-    value *= (1 + reward)
-
-    if counter % 50 == 0:
-        print("Observation:", observation)
-        print("Reward:", reward)
-
-    if terminated or truncated:
-        print('Episode finished')
-        print(f'Total reward: {value}')
-        break
-
-env.close()
