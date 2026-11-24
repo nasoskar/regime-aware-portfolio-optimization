@@ -5,12 +5,12 @@ import wandb
 from wandb.integration.sb3 import WandbCallback
 import numpy as np
 
-VERSION = 'vix_only'
+VERSION = 'vix_only' # soft_probabilities, hard_labels
 SEED = [0,12,25,38,42]
 
 # environment
 df = pd.read_csv('train_dataset.csv', parse_dates=['Date'])
-env = PortfolioEnv(df, VERSION, 'training')
+env = PortfolioEnv(df, VERSION, 'training', regime_window=20)
 
 config = {
     "version": VERSION,
@@ -25,7 +25,8 @@ config = {
     "episode_length": env.episode_length,
     "target_kl": 0.03,
     "log_scale": 0.5,
-    "weight_cap": 0.4
+    "weight_cap": 0.4,
+    "regime_window": 20
 }
 
 for seed in SEED:
@@ -36,7 +37,7 @@ for seed in SEED:
     run = wandb.init(
         project="regime-ppo-training",
         job_type='training',
-        group=f"training-{VERSION}",            
+        group=f"training-{VERSION}-regimehist",            
         name=f"{VERSION}-seed{seed}",
         config=run_config,
         sync_tensorboard=True,                 
@@ -58,7 +59,7 @@ for seed in SEED:
 
     model.learn(total_timesteps=config["total_timesteps"], callback=WandbCallback(verbose=2))
     
-    path = f"train/final{VERSION}_seed{seed}.zip"
+    path = f"train/final{VERSION}_regimehist_seed{seed}.zip"
     model.save(path)
 
     run.finish()

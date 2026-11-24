@@ -5,7 +5,7 @@ from scipy.special import softmax
 from stable_baselines3.common.env_checker import check_env
 
 class PortfolioEnv(gym.Env): # inherits from gymnasium
-    def __init__(self, df, version, flag):
+    def __init__(self, df, version, flag, regime_window=1):
         super().__init__()
         self.lookback_window = 20
         self.cost_rate = 0.001
@@ -17,6 +17,7 @@ class PortfolioEnv(gym.Env): # inherits from gymnasium
         self.weights = np.full(self.n_assets, 1/self.n_assets) # equal weights in initialization
         self.dates = df['Date'].to_numpy()
         self.t = self.lookback_window
+        self.regime_window = regime_window
 
         self.flag = flag # either training or testing
         if self.flag == 'training': 
@@ -28,24 +29,25 @@ class PortfolioEnv(gym.Env): # inherits from gymnasium
 
         if self.version == 'vix_only':
             self.regime = df[['vix_scaled']].to_numpy()
-            self.no_obs += 1
         elif self.version == 'soft_probabilities':
             self.regime = df[['p_state0', 'p_state1', 'p_state2']].to_numpy()
-            self.no_obs += 3
         elif self.version == 'hard_labels':
             self.regime = df[['hard_state_0', 'hard_state_1', 'hard_state_2']].to_numpy()
-            self.no_obs += 3
         elif self.version == 'vanilla':
             self.regime = np.empty((len(df), 0))
         else:
             raise ValueError("Version not supported. Use: vanilla, vix_only, hard_labels, soft_probabilities")
+
+        self.no_obs += self.regime.shape[1] * self.regime_window
 
         self.action_space = gym.spaces.Box(low=-1.0, high=1.0, shape=(self.n_assets,), dtype=np.float32) # continuous values
         self.observation_space = gym.spaces.Box(low=-np.inf, high=np.inf, shape=(self.no_obs,), dtype=np.float32)
 
     def get_observation(self):
         
-        r = np.concatenate([self.obs_returns[self.t - self.lookback_window : self.t].flatten(), self.weights, self.regime[self.t]]) 
+        regime_part = self.regime[self.t - self.regime_window + 1 : self.t + 1].flatten()
+        r = np.concatenate([self.obs_returns[self.t - self.lookback_window : self.t].flatten(),
+        self.weights, regime_part])
         r = r.astype(np.float32)
         return r
 

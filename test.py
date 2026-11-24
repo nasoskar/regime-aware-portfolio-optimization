@@ -3,7 +3,7 @@ from stable_baselines3 import PPO
 from environment import PortfolioEnv      
 import numpy as np
 
-VERSION = ['vanilla', 'soft_probabilities', 'hard_labels', 'vix_only']
+VERSION = ['soft_probabilities', 'hard_labels', 'vix_only']
 SEED = [0,12,25,38,42]
 
 rows = []     
@@ -13,8 +13,8 @@ for version in VERSION:
 
         df = pd.read_csv('test_dataset.csv', parse_dates=['Date'])
 
-        env = PortfolioEnv(df, version, 'testing')
-        model = PPO.load(f'train/final{version}_seed{seed}.zip', device='cpu')
+        env = PortfolioEnv(df, version, 'testing', regime_window=20)
+        model = PPO.load(f'train/final{version}_regimehist_seed{seed}.zip', device='cpu')
 
         obs, info = env.reset()
         print(env.dates[env.t], env.dates[-1])  # first and last day the agent actually plays
@@ -37,16 +37,16 @@ for version in VERSION:
         sharpe = returns.mean()/returns.std()*np.sqrt(252)
         max_drawdown = (cum / np.maximum.accumulate(cum) - 1).min()
         
-        rows.append({'name': version, 'seed': seed, 'sharpe': sharpe,
+        rows.append({'name': f'{version}_regimehist', 'seed': seed, 'sharpe': sharpe,
         'final_value': value, 'max_drawdown': max_drawdown, 'turnover': turnover})
 
-        pd.DataFrame(rows).to_csv('test_results.csv', index=False)
+        pd.DataFrame(rows).to_csv('test_results_regimehist.csv', index=False)
 
 ########### BASELINES #############
 
 # 1. Equal-weight
-
-env = PortfolioEnv(df, 'vanilla', 'testing')
+'''
+env = PortfolioEnv(df, 'vanilla', 'testing', regime_window=20)
 obs, info = env.reset()
 returns = []
 done = False
@@ -78,3 +78,4 @@ results.to_csv('test_results.csv', index=False)
 summary = results.groupby('name')[['sharpe', 'final_value', 'max_drawdown', 'turnover']].agg(['mean', 'std'])
 print(summary)
 summary.to_csv('test_summary.csv')
+'''
